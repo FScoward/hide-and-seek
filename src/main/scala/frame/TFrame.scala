@@ -5,10 +5,11 @@ import javax.swing.{JPanel, UIManager, JFrame}
 
 import akka.actor.{Props, ActorSystem}
 import akka.util.Timeout
+import env.Environment
 import scala.concurrent.duration.DurationInt
 import akka.pattern.ask
 import scala.concurrent.ExecutionContext.Implicits.global
-import core.TwitterActor
+import core.{TweetStack, TwitterActor}
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -24,10 +25,15 @@ class TFrame extends JFrame {
   UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName)
   setTitle("Hide and Seek")
   setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE)
-  setBounds(0, (rectangle.getMaxY - 20).toInt, (rectangle.getMaxX).toInt, 20)
+  
+  Environment.maxX = rectangle.getMaxX.toInt
+  Environment.maxY = rectangle.getMaxY.toInt
+  
+  setBounds(0, (Environment.maxY - 20), Environment.maxX, 20)
   setUndecorated(true)
   setOpacity(0.4f)
 //    setBackground(new Color(0, 0, 0, 0))
+  setAlwaysOnTop(true)
 
   setContentPane(new TPanel(rectangle.getMaxX.toInt))
 
@@ -40,31 +46,45 @@ class TPanel(width: Int) extends JPanel with Runnable {
 
   var initPos = width
   val lb = new ListBuffer[Tweet]
-  val stack = new mutable.Stack[Tweet]
   val actor = ActorSystem("actor").actorOf(Props[TwitterActor])
-  implicit val timeout = Timeout(1000 seconds)
+  implicit val timeout = Timeout(10 minutes)
+  var tweet: Option[Tweet] = None
   
   def run = {
     while(true) {
-      val text = "test"
-      
+      /*
       (actor ? 1).onComplete {
         case Success(s) => stack.push(new Tweet("test", 1920, 20))
         case Failure(_) => println("failure")
       }
+      */
       
-      println(stack.length)
-      stack.foreach{x => if(x.move() < 0) stack.pop()}
+      (actor ? 1).onSuccess {
+        case list: List[Tweet] => {
+          list.map(TweetStack.stack.push(_))
+        }
+        case _ => println("None")
+      }
+      
+//      stack.foreach{x => if(x.move() < 0) stack.pop()}
+      if(tweet.isEmpty && !TweetStack.stack.isEmpty) {
+        tweet = Option(TweetStack.stack.pop())
+      } else {
+        tweet.foreach(t => if(t.move() < 0 - t.length * 24) tweet = None)
+      }
+      
+      
       revalidate()
       repaint()
-      initPos += 50 + text.length * 20
-      Thread.sleep(10)
+//      initPos += 50 + text.length
+      Thread.sleep(8)
     }
   }
   
   override def paintComponent(g: Graphics): Unit = {
     super.paintComponent(g)
-    stack.foreach(_.draw(g))
+//    stack.foreach(_.draw(g))
+    tweet.foreach(_.draw(g))
   }
 
   new Thread(this).start()
