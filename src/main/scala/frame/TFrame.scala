@@ -1,6 +1,6 @@
 package frame
 
-import java.awt.Graphics
+import java.awt.{Color, Graphics}
 import javax.swing.{JPanel, UIManager, JFrame}
 
 import akka.actor.{Props, ActorSystem}
@@ -29,10 +29,10 @@ class TFrame extends JFrame {
   Environment.maxX = rectangle.getMaxX.toInt
   Environment.maxY = rectangle.getMaxY.toInt
   
-  setBounds(0, (Environment.maxY - 20), Environment.maxX, 20)
+  setBounds(0, (Environment.maxY - 20), Environment.maxX, 30)
   setUndecorated(true)
   setOpacity(0.4f)
-//    setBackground(new Color(0, 0, 0, 0))
+//  setBackground(new Color(0, 0, 0, 0))
   setAlwaysOnTop(true)
 
   setContentPane(new TPanel(rectangle.getMaxX.toInt))
@@ -43,47 +43,43 @@ class TFrame extends JFrame {
 class TPanel(width: Int) extends JPanel with Runnable {
   // ダブルバッファリング
   setDoubleBuffered(true)
+  
+  setBackground(Color.BLACK)
 
   var initPos = width
   val lb = new ListBuffer[Tweet]
   val actor = ActorSystem("actor").actorOf(Props[TwitterActor])
-  implicit val timeout = Timeout(10 minutes)
+  implicit val timeout = Timeout(20 minutes)
   var tweet: Option[Tweet] = None
+  val tweets = new mutable.Stack[Tweet]
+  /*
+   * TODO
+   * 前のツイートが画面半分まで流れたら次を流し始める
+   */
+  // 次を描画しても良いか否か
+  var canNext: Boolean = false
   
   def run = {
     while(true) {
-      /*
-      (actor ? 1).onComplete {
-        case Success(s) => stack.push(new Tweet("test", 1920, 20))
-        case Failure(_) => println("failure")
-      }
-      */
+
+      actor ! 1
       
-      (actor ? 1).onSuccess {
-        case list: List[Tweet] => {
-          list.map(TweetStack.stack.push(_))
-        }
-        case _ => println("None")
-      }
-      
-//      stack.foreach{x => if(x.move() < 0) stack.pop()}
       if(tweet.isEmpty && !TweetStack.stack.isEmpty) {
+        println("pop ... rest is " + TweetStack.stack.length)
         tweet = Option(TweetStack.stack.pop())
       } else {
         tweet.foreach(t => if(t.move() < 0 - t.length * 24) tweet = None)
       }
       
-      
       revalidate()
       repaint()
-//      initPos += 50 + text.length
-      Thread.sleep(8)
+       
+      Thread.sleep(15)
     }
   }
   
   override def paintComponent(g: Graphics): Unit = {
     super.paintComponent(g)
-//    stack.foreach(_.draw(g))
     tweet.foreach(_.draw(g))
   }
 

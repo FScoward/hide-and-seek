@@ -1,8 +1,9 @@
 package core
 
 import akka.actor.Actor
+import env.Environment
 import frame.Tweet
-import twitter4j.TwitterFactory
+import twitter4j.{Paging, TwitterFactory}
 import collection.JavaConversions._
 import scala.concurrent.duration.DurationInt
 
@@ -12,24 +13,23 @@ import scala.concurrent.duration.DurationInt
 
 class TwitterActor extends Actor {
   private[this] val twitter = TwitterFactory.getSingleton
-  val interval = 5 minute
+  val interval = 1 minute
 
-  def getScrollText = {
-    twitter.getHomeTimeline.map(status => {
-      new Tweet(s"""${status.getText.replaceAll("\r", "")} @${status.getUser.getScreenName}""", 1920, 20)
-    }).toList
+  private [this] def getScrollText = {
+    println("get scroll text")
+    twitter.getHomeTimeline(new Paging(1, 100)).map(status => {
+      new Tweet( s"""【${status.getUser.getName}@${status.getUser.getScreenName}】 ${status.getText.replaceAll("\r", "")}""", Environment.maxX, 20)
+    }).toList.reverse
   }
-  
-  def receive = {
+
+  override def receive = {
     case x: Int => {
       println("--- RECEIVE ---")
-      if(!TweetStack.stack.isEmpty) {
+      if (!TweetStack.stack.isEmpty) {
         Thread.sleep(interval.toMillis)
         TweetStack.stack.clear
       }
-
-      // timeline 取得
-      sender ! getScrollText
+      getScrollText.foreach(t => TweetStack.stack.push(t))
     }
     case _ =>
   }
