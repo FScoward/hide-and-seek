@@ -8,5 +8,4 @@ import frame.Tweet
  */
 object TweetStack {
   val stack = new collection.mutable.Stack[Tweet]
-  
 }
