@@ -3,7 +3,7 @@ package core
 import akka.actor.Actor
 import env.Environment
 import frame.Tweet
-import twitter4j.{Paging, TwitterFactory}
+import twitter4j.{TwitterException, Paging, TwitterFactory}
 import collection.JavaConversions._
 import scala.concurrent.duration.DurationInt
 
@@ -15,11 +15,15 @@ class TwitterActor extends Actor {
   private[this] val twitter = TwitterFactory.getSingleton
   val interval = 1 minute
 
-  private [this] def getScrollText = {
+  private[this] def getScrollText = {
     println("get scroll text")
-    twitter.getHomeTimeline(new Paging(1, 100)).map(status => {
-      new Tweet( s"""【${status.getUser.getName}@${status.getUser.getScreenName}】 ${status.getText.replaceAll("\r", "")}""", Environment.maxX, 20)
-    }).toList.reverse
+    try {
+      twitter.getHomeTimeline(new Paging(1, 50)).map(status => {
+        new Tweet( s"""【${status.getUser.getName}@${status.getUser.getScreenName}】 ${status.getText.replaceAll("\r", "")}""", Environment.maxX, 20)
+      }).toList.reverse
+    } catch {
+      case e: TwitterException => Nil
+    }
   }
 
   override def receive = {
