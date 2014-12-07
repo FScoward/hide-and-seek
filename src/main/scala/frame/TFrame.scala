@@ -68,7 +68,7 @@ class TPanel(width: Int) extends JPanel with Runnable {
         println("pop ... rest is " + TweetStack.stack.length)
         tweet = Option(TweetStack.stack.pop())
       } else {
-        tweet.foreach(t => if(t.move() < 0 - t.length * 24) tweet = None)
+        tweet.foreach(t => if(t.move() < 0 - t.length * Environment.fontSize) tweet = None)
       }
       
       revalidate()
